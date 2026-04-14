@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智眸通 - 工业智能哨兵系统（演示版）</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: #fff;
+            min-height: 100vh;
+        }
+        header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(45deg, #6dd5ed, #2193b0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .demo-badge {
+            background: #ff9800;
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .container {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        .video-section { flex: 7; }
+        .video-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .placeholder-video {
+            width: 80%;
+            height: 70%;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #6dd5ed;
+            border: 2px dashed #6dd5ed;
+        }
+        .sidebar { flex: 3; display: flex; flex-direction: column; gap: 20px; }
+        .card {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 12px;
+        }
+        .card h2 { color: #6dd5ed; margin-bottom: 15px; font-size: 1.2rem; }
+        .alert-table, .analysis-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .alert-table th, .alert-table td,
+        .analysis-table th, .analysis-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .alert-table th, .analysis-table th { color: #6dd5ed; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab-btn {
+            padding: 8px 16px;
+            background: rgba(109,213,237,0.2);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .tab-btn.active { background: #6dd5ed; color: #1a2a6c; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            margin-right: 8px;
+            box-shadow: 0 0 5px #4caf50;
+        }
+        button {
+            padding: 8px 16px;
+            background: rgba(33,147,176,0.5);
+            border: 1px solid #6dd5ed;
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        button:hover { background: #6dd5ed; color: #1a2a6c; }
+        .export-btn { background: linear-gradient(45deg, #38ef7d, #11998e); border: none; }
+        .scrollable { max-height: 250px; overflow-y: auto; }
+        @media (max-width: 768px) { .container { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>智眸通 · 工业智能哨兵系统</h1>
+        <div>
+            <span class="demo-badge">🎬 演示模式 | 模拟数据</span>
+            <button class="export-btn" onclick="exportDemoReport()" style="margin-left:15px">📊 导出报告</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="video-section">
+            <div class="video-container">
+                <div class="placeholder-video">
+                    🎥 实时监控画面<br>
+                    <small style="font-size:0.8rem">（演示模式 - 模拟视频流）</small>
+                </div>
+                <div>
+                    <button onclick="switchDemoSource(0)">📷 摄像头0</button>
+                    <button onclick="switchDemoSource(1)">📷 摄像头1</button>
+                    <button onclick="switchDemoSource('upload')">📁 模拟上传</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card">
+                <h2><span class="status-indicator"></span> 系统状态</h2>
+                <p>运行中 · 7×24小时监控</p>
+                <p>当前视频源: <strong id="currentSource">摄像头0</strong></p>
+                <p>分析帧数: <strong id="frameCount">0</strong></p>
+            </div>
+
+            <div class="card">
+                <h2>🔔 最近警报 <span id="alertBadge" class="badge" style="background:#ff416c; border-radius:50%; padding:2px 8px; margin-left:8px">0</span></h2>
+                <div class="scrollable">
+                    <table class="alert-table">
+                        <thead><tr><th>时间</th><th>类型</th><th>详情</th></tr></thead>
+                        <tbody id="alertList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🧠 智能分析</h2>
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="openDemoTab('frame')">📷 帧分析 (Bakllava)</button>
+                    <button class="tab-btn" onclick="openDemoTab('integrated')">🔍 整合分析 (Qwen3)</button>
+                </div>
+                <div id="frameTab" class="tab-content active">
+                    <div class="scrollable">
+                        <table class="analysis-table">
+                            <thead><tr><th>时间</th><th>描述</th><th>耗时(ms)</th></tr></thead>
+                            <tbody id="frameList"></tbody>
+                        </table>
+                    </div>
+                    <button onclick="triggerDemoAnalysis()" style="margin-top:10px; width:100%">🔄 手动分析</button>
+                </div>
+                <div id="integratedTab" class="tab-content">
+                    <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:8px; min-height:150px">
+                        <pre id="integratedOutput" style="white-space:pre-wrap; font-family:monospace">等待分析...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 模拟数据生成器 ==========
+        let frameReports = [];
+        let alerts = [];
+        let analysisInterval;
+        let currentSourceName = "摄像头0";
+
+        // 模拟场景库
+        const scenes = [
+            { desc: "✅ 人员在工作区域，物料充足，门关闭，传送带运行正常", alert: null },
+            { desc: "⚠️ 人员离开工作区域，物料充足，门关闭", alert: { type: "人员离岗", msg: "操作人员离开工作区域" } },
+            { desc: "⚠️ 设备运行中检测到安装门开启，请立即检查", alert: { type: "设备异常", msg: "设备门异常开启" } },
+            { desc: "⚠️ 检测到操作姿态不符合安全规范", alert: { type: "操作违规", msg: "操作姿态异常" } },
+            { desc: "⚠️ 包材堆垛高度低于阈值，仅剩2个", alert: { type: "物料短缺", msg: "包材缺料报警" } },
+            { desc: "✅ 所有指标正常，生产平稳", alert: null },
+            { desc: "⚠️ 人员离岗超过30秒，设备门异常开启", alert: { type: "复合异常", msg: "人员离岗+设备门开启" } }
+        ];
+
+        function generateRandomReport() {
+            const scene = scenes[Math.floor(Math.random() * scenes.length)];
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+
+            return {
+                timestamp: timeStr,
+                analysis: {
+                    description: scene.desc,
+                    total_duration: Math.floor(Math.random() * 500 + 100)
+                },
+                alert: scene.alert
+            };
+        }
+
+        function updateUI() {
+            // 更新帧分析表格
+            const frameTbody = document.getElementById('frameList');
+            frameTbody.innerHTML = frameReports.slice(-10).reverse().map(r => `
+                <tr>
+                    <td>${r.timestamp}</td>
+                    <td>${r.analysis.description.substring(0, 50)}...</td>
+                    <td>${r.analysis.total_duration}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('frameCount').innerText = frameReports.length;
+
+            // 更新警报列表
+            const alertTbody = document.getElementById('alertList');
+            alertTbody.innerHTML = alerts.slice(-8).reverse().map(a => `
+                <tr>
+                    <td>${a.time}</td>
+                    <td>${a.type}</td>
+                    <td>${a.msg}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('alertBadge').innerText = alerts.length;
+        }
+
+        // 自动添加模拟数据
+        function startAutoSimulation() {
+            if (analysisInterval) clearInterval(analysisInterval);
+            analysisInterval = setInterval(() => {
+                const newReport = generateRandomReport();
+                frameReports.push(newReport);
+
+                // 如果有警报，添加到警报列表
+                if (newReport.alert) {
+                    alerts.unshift({
+                        time: newReport.timestamp,
+                        type: newReport.alert.type,
+                        msg: newReport.alert.msg
+                    });
+                    if (alerts.length > 20) alerts.pop();
+                }
+
+                if (frameReports.length > 50) frameReports.shift();
+                updateUI();
+
+                // 每6次帧分析做一次整合分析
+                if (frameReports.length % 6 === 0 && frameReports.length > 0) {
+                    performIntegratedAnalysis();
+                }
+            }, 3000);
+        }
+
+        function performIntegratedAnalysis() {
+            const recentReports = frameReports.slice(-8);
+            const descList = recentReports.map(r => r.analysis.description).join('\n');
+
+            // 模拟Qwen3整合分析
+            const hasAlert = recentReports.some(r => r.alert !== null);
+            let analysisResult = "";
+
+            if (hasAlert) {
+                const alertTypes = [...new Set(recentReports.filter(r => r.alert).map(r => r.alert.type))];
+                analysisResult = `🔴 预警：检测到 ${alertTypes.join('、')} 异常情况。建议立即安排人员检查相关工位，确认安全规范执行情况。`;
+            } else {
+                analysisResult = "🟢 无异常：近期监控画面显示生产线运行正常，人员均在岗，设备状态良好，物料供应充足。";
+            }
+
+            document.getElementById('integratedOutput').innerHTML = `
+                <strong>📋 整合分析结果（Qwen3）</strong><br><br>
+                ${analysisResult}<br><br>
+                <small>📊 基于最近 ${recentReports.length} 帧分析 | 模拟演示数据</small>
+            `;
+        }
+
+        function triggerDemoAnalysis() {
+            // 手动触发一次分析
+            const newReport = generateRandomReport();
+            frameReports.push(newReport);
+            if (newReport.alert) {
+                alerts.unshift({
+                    time: newReport.timestamp,
+                    type: newReport.alert.type,
+                    msg: newReport.alert.msg
+                });
+                if (alerts.length > 20) alerts.pop();
+            }
+            if (frameReports.length > 50) frameReports.shift();
+            updateUI();
+            performIntegratedAnalysis();
+        }
+
+        function switchDemoSource(source) {
+            if (source === 0) currentSourceName = "摄像头0";
+            else if (source === 1) currentSourceName = "摄像头1";
+            else currentSourceName = "模拟上传视频";
+            document.getElementById('currentSource').innerText = currentSourceName;
+
+            // 切换时清空数据，模拟新视频源
+            frameReports = [];
+            alerts = [];
+            document.getElementById('integratedOutput').innerHTML = "等待分析...";
+            updateUI();
+        }
+
+        function exportDemoReport() {
+            let csv = "时间,类型,消息\n";
+            alerts.forEach(a => {
+                csv += `${a.time},${a.type},${a.msg}\n`;
+            });
+            const blob = new Blob([csv], {type: "text/csv"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `alert_report_${new Date().toISOString().slice(0,19)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function openDemoTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+            if (tab === 'frame') {
+                document.getElementById('frameTab').classList.add('active');
+                document.querySelector('.tabs button:first-child').classList.add('active');
+            } else {
+                document.getElementById('integratedTab').classList.add('active');
+                document.querySelector('.tabs button:last-child').classList.add('active');
+            }
+        }
+
+        // 初始化
+        startAutoSimulation();
+
+        // 初始添加几条演示数据
+        setTimeout(() => {
+            for(let i = 0; i < 3; i++) {
+                triggerDemoAnalysis();
+            }
+        }, 500);
+    </script>
+</body>
+</html>
